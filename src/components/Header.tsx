@@ -1,17 +1,39 @@
-
 import React, { useState } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { NavigationMenu, NavigationMenuContent, NavigationMenuItem, NavigationMenuLink, NavigationMenuList, NavigationMenuTrigger } from "@/components/ui/navigation-menu";
 import { Button } from "@/components/ui/button";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
+import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import Logo from './Logo';
 import LanguageSelector from './LanguageSelector';
-import { Menu, X } from 'lucide-react';
+import { Menu, X, User, LogOut, Settings } from 'lucide-react';
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 import { useIsMobile } from '@/hooks/use-mobile';
+import { useAuth } from '@/contexts/AuthContext';
 
 const Header = () => {
   const isMobile = useIsMobile();
   const [isOpen, setIsOpen] = useState(false);
+  const { isAuthenticated, user, logout } = useAuth();
+  const navigate = useNavigate();
+
+  const handleLogout = async () => {
+    await logout();
+    navigate('/');
+  };
+
+  const getUserInitials = () => {
+    if (user?.full_name) {
+      return user.full_name.split(' ').map(n => n[0]).join('').toUpperCase();
+    }
+    if (user?.username) {
+      return user.username.slice(0, 2).toUpperCase();
+    }
+    if (user?.email) {
+      return user.email.slice(0, 2).toUpperCase();
+    }
+    return 'U';
+  };
 
   return (
     <header className="sticky top-0 z-40 w-full border-b bg-background/95 backdrop-blur">
@@ -43,10 +65,12 @@ const Header = () => {
                       <div className="font-medium">Blog</div>
                       <div className="text-sm text-muted-foreground">Cooking tips and insights</div>
                     </Link>
-                    <Link to="/recommendations" className="block p-3 space-y-1 rounded-md hover:bg-accent">
-                      <div className="font-medium">Recommendations</div>
-                      <div className="text-sm text-muted-foreground">Restaurants & more</div>
-                    </Link>
+                    {isAuthenticated && (
+                      <Link to="/recommendations" className="block p-3 space-y-1 rounded-md hover:bg-accent">
+                        <div className="font-medium">Recommendations</div>
+                        <div className="text-sm text-muted-foreground">Restaurants & more</div>
+                      </Link>
+                    )}
                     <Link to="/nutrition-guide" className="block p-3 space-y-1 rounded-md hover:bg-accent">
                       <div className="font-medium">Nutrition Guide</div>
                       <div className="text-sm text-muted-foreground">Healthy eating tips</div>
@@ -70,14 +94,57 @@ const Header = () => {
         {/* User Actions */}
         <div className="flex items-center gap-2">
           <LanguageSelector />
-          <div className="hidden md:flex gap-2">
-            <Link to="/login">
-              <Button variant="outline">Login</Button>
-            </Link>
-            <Link to="/signup">
-              <Button>Sign Up</Button>
-            </Link>
-          </div>
+          
+          {isAuthenticated ? (
+            <div className="hidden md:flex items-center gap-2">
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button variant="ghost" className="relative h-8 w-8 rounded-full">
+                    <Avatar className="h-8 w-8">
+                      <AvatarFallback className="text-xs">
+                        {getUserInitials()}
+                      </AvatarFallback>
+                    </Avatar>
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent className="w-56" align="end" forceMount>
+                  <div className="flex items-center justify-start gap-2 p-2">
+                    <div className="flex flex-col space-y-1 leading-none">
+                      {user?.full_name && (
+                        <p className="font-medium">{user.full_name}</p>
+                      )}
+                      <p className="w-[200px] truncate text-sm text-muted-foreground">
+                        {user?.email}
+                      </p>
+                    </div>
+                  </div>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem disabled>
+                    <User className="mr-2 h-4 w-4" />
+                    <span>Profile</span>
+                  </DropdownMenuItem>
+                  <DropdownMenuItem disabled>
+                    <Settings className="mr-2 h-4 w-4" />
+                    <span>Settings</span>
+                  </DropdownMenuItem>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem onClick={handleLogout}>
+                    <LogOut className="mr-2 h-4 w-4" />
+                    <span>Log out</span>
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
+            </div>
+          ) : (
+            <div className="hidden md:flex gap-2">
+              <Link to="/login">
+                <Button variant="outline">Login</Button>
+              </Link>
+              <Link to="/signup">
+                <Button>Sign Up</Button>
+              </Link>
+            </div>
+          )}
 
           {/* Mobile Menu */}
           <div className="block md:hidden">
@@ -104,11 +171,13 @@ const Header = () => {
                       Blog
                     </Button>
                   </Link>
-                  <Link to="/recommendations" className="flex items-center">
-                    <Button variant="ghost" className="w-full justify-start text-lg font-medium" onClick={() => setIsOpen(false)}>
-                      Recommendations
-                    </Button>
-                  </Link>
+                  {isAuthenticated && (
+                    <Link to="/recommendations" className="flex items-center">
+                      <Button variant="ghost" className="w-full justify-start text-lg font-medium" onClick={() => setIsOpen(false)}>
+                        Recommendations
+                      </Button>
+                    </Link>
+                  )}
                   <Link to="/about" className="flex items-center">
                     <Button variant="ghost" className="w-full justify-start text-lg font-medium" onClick={() => setIsOpen(false)}>
                       About
@@ -124,14 +193,28 @@ const Header = () => {
                       Help Center
                     </Button>
                   </Link>
-                  <div className="flex flex-col gap-2 mt-4">
-                    <Link to="/login" className="w-full">
-                      <Button variant="outline" className="w-full">Login</Button>
-                    </Link>
-                    <Link to="/signup" className="w-full">
-                      <Button className="w-full">Sign Up</Button>
-                    </Link>
-                  </div>
+                  
+                  {isAuthenticated ? (
+                    <div className="flex flex-col gap-2 mt-4 pt-4 border-t">
+                      <div className="px-3 py-2">
+                        <p className="font-medium">{user?.full_name || user?.username}</p>
+                        <p className="text-sm text-muted-foreground">{user?.email}</p>
+                      </div>
+                      <Button variant="outline" className="w-full" onClick={handleLogout}>
+                        <LogOut className="mr-2 h-4 w-4" />
+                        Log out
+                      </Button>
+                    </div>
+                  ) : (
+                    <div className="flex flex-col gap-2 mt-4">
+                      <Link to="/login" className="w-full">
+                        <Button variant="outline" className="w-full">Login</Button>
+                      </Link>
+                      <Link to="/signup" className="w-full">
+                        <Button className="w-full">Sign Up</Button>
+                      </Link>
+                    </div>
+                  )}
                 </div>
               </SheetContent>
             </Sheet>
@@ -160,12 +243,35 @@ const Header = () => {
             </Button>
             <span>Blog</span>
           </Link>
-          <Link to="/login" className="flex flex-col items-center text-xs">
-            <Button variant="ghost" size="icon">
-              <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="lucide lucide-user"><path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
-            </Button>
-            <span>Login</span>
-          </Link>
+          {isAuthenticated ? (
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <div className="flex flex-col items-center text-xs">
+                  <Button variant="ghost" size="icon">
+                    <Avatar className="h-6 w-6">
+                      <AvatarFallback className="text-xs">
+                        {getUserInitials()}
+                      </AvatarFallback>
+                    </Avatar>
+                  </Button>
+                  <span>Profile</span>
+                </div>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end">
+                <DropdownMenuItem onClick={handleLogout}>
+                  <LogOut className="mr-2 h-4 w-4" />
+                  <span>Log out</span>
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+          ) : (
+            <Link to="/login" className="flex flex-col items-center text-xs">
+              <Button variant="ghost" size="icon">
+                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="lucide lucide-user"><path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+              </Button>
+              <span>Login</span>
+            </Link>
+          )}
         </div>
       )}
     </header>
